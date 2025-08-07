@@ -9,7 +9,7 @@ import logging
 import os
 import datetime
 
-from homeassistant.components.sensor import  SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.const import UnitOfTemperature, CONCENTRATION_PARTS_PER_MILLION, PERCENTAGE
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, CoordinatorEntity
@@ -204,6 +204,7 @@ class AirCO2ntrolSensor(CoordinatorEntity, SensorEntity):
         self._attr_icon = icon
         self._attr_device_class = device_class
         self._attr_unique_id = f"{unique_id}-{sensor_type}"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
         self.sensor_type = sensor_type
 
     @property
