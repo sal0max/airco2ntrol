@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "temperature_offset": "Temperatur-Offset",
+          "humidity_offset": "Luftfeuchtigkeits-Offset"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "temperature_offset": "Temperatur-Offset",
+          "humidity_offset": "Luftfeuchtigkeits-Offset"
+        }
+      }
+    }
+  }
+}

@@ -17,6 +17,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from custom_components.airco2ntrol.sensor_reader import SensorReader
+from .const import CONF_TEMPERATURE_OFFSET, DEFAULT_TEMPERATURE_OFFSET
+from .const import CONF_HUMIDITY_OFFSET, DEFAULT_HUMIDITY_OFFSET
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -186,17 +188,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     await coordinator.async_config_entry_first_refresh()
 
+    async def _update_listener(_hass, _entry):
+        _LOGGER.info(f"Options changed for {_entry.entry_id}. Reloading integration.")
+        await _hass.config_entries.async_reload(_entry.entry_id)
+
+    entry.add_update_listener(_update_listener)
+
+    temperature_offset = entry.options.get(CONF_TEMPERATURE_OFFSET, entry.data.get(CONF_TEMPERATURE_OFFSET, DEFAULT_TEMPERATURE_OFFSET))
+    humidity_offset = entry.options.get(CONF_HUMIDITY_OFFSET, entry.data.get(CONF_HUMIDITY_OFFSET, DEFAULT_HUMIDITY_OFFSET))
+
     async_add_entities([
         AirCO2ntrolCarbonDioxideSensor(coordinator, unique_id),
-        AirCO2ntrolTemperatureSensor(coordinator, unique_id),
-        AirCO2ntrolHumiditySensor(coordinator, unique_id)
+        AirCO2ntrolTemperatureSensor(coordinator, unique_id, temperature_offset),
+        AirCO2ntrolHumiditySensor(coordinator, unique_id, humidity_offset),
     ])
 
 
 class AirCO2ntrolSensor(CoordinatorEntity, SensorEntity):
     """Base class for AirCO2ntrol sensors."""
 
-    def __init__(self, coordinator, name, sensor_type, unit, icon, device_class, unique_id):
+    def __init__(self, coordinator, name, sensor_type, unit, icon, device_class, unique_id, offset=0.0):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_name = name
@@ -206,12 +217,15 @@ class AirCO2ntrolSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"{unique_id}-{sensor_type}"
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self.sensor_type = sensor_type
+        self._offset = offset
 
     @property
     def native_value(self):
         """Return the current sensor state."""
         value = self.coordinator.data.get(self.sensor_type)
-        _LOGGER.debug(f"Sensor {self._attr_unique_id} updated: {value}")
+        if value is not None and self._offset is not None:
+            value = value + self._offset
+        _LOGGER.debug(f"Sensor {self._attr_unique_id} updated: {value} (offset: {self._offset})")
         return value
 
 
@@ -238,7 +252,7 @@ class AirCO2ntrolCarbonDioxideSensor(AirCO2ntrolSensor):
 class AirCO2ntrolTemperatureSensor(AirCO2ntrolSensor):
     """Temperature Sensor."""
 
-    def __init__(self, coordinator, unique_id):
+    def __init__(self, coordinator, unique_id, offset):
         super().__init__(
             coordinator,
             name="AirCO2ntrol Temperature",
@@ -246,14 +260,15 @@ class AirCO2ntrolTemperatureSensor(AirCO2ntrolSensor):
             unit=UnitOfTemperature.CELSIUS,
             icon="mdi:thermometer",
             device_class=SensorDeviceClass.TEMPERATURE,
-            unique_id=unique_id
+            unique_id=unique_id,
+            offset=offset
         )
 
 
 class AirCO2ntrolHumiditySensor(AirCO2ntrolSensor):
     """Humidity Sensor."""
 
-    def __init__(self, coordinator, unique_id):
+    def __init__(self, coordinator, unique_id, offset):
         super().__init__(
             coordinator,
             name="AirCO2ntrol Humidity",
@@ -261,5 +276,6 @@ class AirCO2ntrolHumiditySensor(AirCO2ntrolSensor):
             unit=PERCENTAGE,
             icon="mdi:water-percent",
             device_class=SensorDeviceClass.HUMIDITY,
-            unique_id=unique_id
+            unique_id=unique_id,
+            offset=offset
         )
